@@ -1,6 +1,7 @@
 stages:
   - build
   - release
+  - catalog
 
 build-docker-image:
   stage: build
@@ -30,3 +31,15 @@ publish-docker-image:
     IMG_SOURCES: registry.ddbuild.io/ci/datadog-ci:v${CI_PIPELINE_ID}-${CI_COMMIT_SHORT_SHA}
     IMG_DESTINATIONS: ci:${CI_COMMIT_TAG},ci:latest
     IMG_SIGNING: 'false'
+
+catalog-endpoints:
+  stage: catalog
+  only: ['master']
+  tags: ['runner:docker']
+  image: node:22
+  before_script:
+    - apt-get update -y && apt-get install -y awscli
+  script:
+    - yarn install --immutable
+    - yarn catalog-endpoints
+    - aws s3 cp endpoints.csv s3://dd-datadog-ci/endpoints.csv
