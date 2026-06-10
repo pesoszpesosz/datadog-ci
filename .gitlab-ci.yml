@@ -37,9 +37,16 @@ catalog-endpoints:
   only: ['master']
   tags: ['runner:docker']
   image: node:22
+  id_tokens:
+    CI_IDENTITIES_GITLAB_ID_TOKEN:
+      aud: ci-identities
   before_script:
-    - apt-get update -y && apt-get install -y awscli
+    - apt-get update -qq && apt-get install -y awscli
+    - CI_ID_VERSION=$(aws s3 ls s3://binaries-ddbuild-io-prod/ci-identities/ci-identities-gitlab-job-client/versions/ | grep PRE | awk '{print $2}' | sort -V | tail -1 | tr -d '/')
+    - aws s3 cp "s3://binaries-ddbuild-io-prod/ci-identities/ci-identities-gitlab-job-client/versions/${CI_ID_VERSION}/ci-identities-gitlab-job-client-linux-amd64" /usr/local/bin/ci-identities-gitlab-job-client
+    - chmod +x /usr/local/bin/ci-identities-gitlab-job-client
   script:
     - yarn install --immutable
     - yarn catalog-endpoints
+    - ci-identities-gitlab-job-client assume-role
     - aws s3 cp endpoints.csv s3://dd-datadog-ci/endpoints.csv
